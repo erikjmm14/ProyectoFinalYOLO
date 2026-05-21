@@ -28,3 +28,10 @@ logs/*
 
 # Notebooks
 .ipynb_checkpoints/
+
+# Test fixtures (imágenes de prueba descargadas)
+tests/fixtures/
+
+# Modelos YOLO descargados en raíz del proyecto
+yolov8n.pt
+*.pt
