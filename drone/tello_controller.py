@@ -26,6 +26,10 @@ class TelloController:
         log.info("[TELLO] takeoff")
         self.tello.takeoff()
         self.in_air = True
+        time.sleep(3)  # estabilización tras takeoff antes de aceptar más comandos
+
+    def _post_command_settle(self) -> None:
+        time.sleep(1)
 
     def land(self) -> None:
         log.info("[TELLO] land")
@@ -38,11 +42,13 @@ class TelloController:
         # djitellopy clamp: el Tello acepta 20–500 cm por comando
         cm = max(20, min(500, int(cm)))
         self.tello.move_forward(cm)
+        self._post_command_settle()
 
     def move_up(self, cm: int) -> None:
         log.info(f"[TELLO] move_up {cm}cm")
         cm = max(20, min(500, int(cm)))
         self.tello.move_up(cm)
+        self._post_command_settle()
 
     def get_frame(self):
         return self.tello.get_frame_read().frame
