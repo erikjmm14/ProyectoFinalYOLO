@@ -22,7 +22,8 @@ desktop.ini
 
 # Project: modelos y logs
 assets/*.pt
-logs/
+logs/*
+!logs/.gitkeep
 *.log
 
 # Notebooks
