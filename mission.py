@@ -1,6 +1,7 @@
 """Orquestador de la misión: takeoff -> scan por mesa -> hover -> land."""
 
 import logging
+import threading
 import time
 
 import cv2
@@ -34,15 +35,23 @@ class MissionPlanner:
         self.flight_height_cm = flight_height_cm
         self.show = show
 
+        # Estado compartido con el thread de preview en vivo
+        self._latest_detections: list = []
+        self._preview_stop = threading.Event()
+        self._preview_thread: threading.Thread | None = None
+        self._abort_requested = False
+
     def run(self) -> bool:
         """Ejecuta la misión. Devuelve True si encontró el objetivo."""
         found = False
         try:
             self._preflight()
+            self._start_live_preview()
             self.ctrl.takeoff()
             self._ascend_to_flight_height()
             found = self._fly_mission()
         finally:
+            self._stop_live_preview()
             try:
                 self.ctrl.land()
             except Exception as e:
@@ -96,6 +105,8 @@ class MissionPlanner:
         frames_seen = 0
 
         while frames_seen < self.scan_max_frames:
+            if self._abort_requested:
+                raise KeyboardInterrupt("Abort manual con 'q'")
             # Respeta el límite de tiempo sólo cuando scan_time_sec > 0
             if self.scan_time_sec > 0 and time.time() >= deadline:
                 break
@@ -106,16 +117,12 @@ class MissionPlanner:
             frames_seen += 1
 
             detections = self.det.detect(frame)
+            self._latest_detections = detections  # publica para el preview
             hit = self.det.target_found(detections)
             if hit is not None:
                 positives += 1
                 log.info(f"  detección {positives}/{self.confirm_k_frames} "
                          f"(conf={hit.conf:.2f}) en mesa {table_idx}")
-
-            if self.show:
-                self._render(frame, detections)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    raise KeyboardInterrupt("Abort manual con 'q'")
 
             if positives >= self.confirm_k_frames:
                 return True
@@ -129,6 +136,42 @@ class MissionPlanner:
     def _battery_too_low(self) -> bool:
         bat = self.ctrl.get_battery()
         return bat < self.battery_abort_min
+
+    def _start_live_preview(self) -> None:
+        """Arranca un thread que muestra el feed del dron durante toda la misión."""
+        if not self.show:
+            return
+        self._preview_stop.clear()
+        self._abort_requested = False
+        self._preview_thread = threading.Thread(
+            target=self._preview_loop, name="LivePreview", daemon=True,
+        )
+        self._preview_thread.start()
+        log.info("Live preview iniciado (presiona 'q' en la ventana para abortar)")
+
+    def _stop_live_preview(self) -> None:
+        if not self.show or self._preview_thread is None:
+            return
+        self._preview_stop.set()
+        self._preview_thread.join(timeout=2)
+        self._preview_thread = None
+
+    def _preview_loop(self) -> None:
+        """Loop del thread: lee frames, los muestra con las últimas detecciones."""
+        while not self._preview_stop.is_set():
+            try:
+                frame = self.ctrl.get_frame()
+            except Exception as e:
+                log.warning(f"Preview: error leyendo frame: {e}")
+                time.sleep(0.1)
+                continue
+            if frame is None:
+                time.sleep(0.05)
+                continue
+            self._render(frame, self._latest_detections)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                self._abort_requested = True
+                break
 
     def _render(self, frame, detections) -> None:
         for d in detections:
