@@ -8,7 +8,7 @@ from drone.tello_controller import TelloController
 
 
 REQUIRED_METHODS = ["connect", "takeoff", "land", "move_forward",
-                    "get_frame", "get_battery", "emergency", "end"]
+                    "move_up", "get_frame", "get_battery", "emergency", "end"]
 
 
 def test_tello_controller_has_required_methods():

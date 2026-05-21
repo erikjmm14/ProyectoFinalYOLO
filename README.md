@@ -10,7 +10,7 @@ Sistema que vuela un dron Ryze Tello sobre 6 mesas, detecta objetos con YOLOv8 (
 
 ## Requisitos
 
-- Python 3.10 o 3.11
+- Python 3.10, 3.11 o 3.12
 - Conexión a internet (primera vez, para descargar el modelo)
 - WiFi disponible para conectarse al Tello (red `TELLO-XXXXX`)
 

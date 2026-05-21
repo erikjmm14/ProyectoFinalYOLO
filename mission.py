@@ -19,6 +19,7 @@ class MissionPlanner:
                  table_distance_cm: int = config.TABLE_DISTANCE_CM,
                  battery_preflight_min: int = config.BATTERY_PREFLIGHT_MIN,
                  battery_abort_min: int = config.BATTERY_ABORT_MIN,
+                 flight_height_cm: int = config.FLIGHT_HEIGHT_CM,
                  show: bool = True):
         self.ctrl = controller
         self.det = detector
@@ -30,6 +31,7 @@ class MissionPlanner:
         self.table_distance_cm = table_distance_cm
         self.battery_preflight_min = battery_preflight_min
         self.battery_abort_min = battery_abort_min
+        self.flight_height_cm = flight_height_cm
         self.show = show
 
     def run(self) -> bool:
@@ -38,6 +40,7 @@ class MissionPlanner:
         try:
             self._preflight()
             self.ctrl.takeoff()
+            self._ascend_to_flight_height()
             found = self._fly_mission()
         finally:
             try:
@@ -62,6 +65,12 @@ class MissionPlanner:
             raise RuntimeError(
                 f"Batería insuficiente: {bat}% < mínimo {self.battery_preflight_min}%"
             )
+
+    def _ascend_to_flight_height(self) -> None:
+        """Sube del altura de takeoff por defecto (~80 cm) a FLIGHT_HEIGHT_CM."""
+        delta = self.flight_height_cm - 80
+        if delta >= 20:
+            self.ctrl.move_up(delta)
 
     def _fly_mission(self) -> bool:
         for i in range(1, self.num_tables + 1):

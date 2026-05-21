@@ -39,6 +39,11 @@ class TelloController:
         cm = max(20, min(500, int(cm)))
         self.tello.move_forward(cm)
 
+    def move_up(self, cm: int) -> None:
+        log.info(f"[TELLO] move_up {cm}cm")
+        cm = max(20, min(500, int(cm)))
+        self.tello.move_up(cm)
+
     def get_frame(self):
         return self.tello.get_frame_read().frame
 

@@ -28,6 +28,9 @@ class FakeController:
         self.calls.append(f"forward:{cm}")
         self.table_idx += 1
         self.frames_remaining = self.total_per_table
+
+    def move_up(self, cm):
+        self.calls.append(f"up:{cm}")
     def get_frame(self):
         if self.frames_remaining <= 0:
             return np.zeros((10, 10, 3), dtype=np.uint8)
