@@ -27,9 +27,22 @@ class TelloController:
         self.tello.takeoff()
         self.in_air = True
         time.sleep(3)  # estabilización tras takeoff antes de aceptar más comandos
+        self._reassert_sdk_mode()
 
     def _post_command_settle(self) -> None:
         time.sleep(1)
+
+    def _reassert_sdk_mode(self) -> None:
+        """Reenvía el comando 'command' para asegurar que el Tello sigue en modo SDK.
+
+        Algunos Tello revierten a modo App tras takeoff, causando 'error Not joystick'
+        en los siguientes movimientos. Este re-arme suele solucionarlo.
+        """
+        try:
+            self.tello.send_control_command("command", timeout=3)
+            log.info("[TELLO] modo SDK re-armado")
+        except Exception as e:
+            log.warning(f"[TELLO] re-arme SDK falló: {e}")
 
     def land(self) -> None:
         log.info("[TELLO] land")

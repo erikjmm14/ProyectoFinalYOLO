@@ -76,10 +76,21 @@ class MissionPlanner:
             )
 
     def _ascend_to_flight_height(self) -> None:
-        """Sube del altura de takeoff por defecto (~80 cm) a FLIGHT_HEIGHT_CM."""
+        """Sube del altura de takeoff por defecto (~80 cm) a FLIGHT_HEIGHT_CM.
+
+        Si falla el move_up (algunos Tello revierten a modo App), la misión
+        continúa a la altura por defecto en vez de abortar.
+        """
         delta = self.flight_height_cm - 80
-        if delta >= 20:
+        if delta < 20:
+            return
+        try:
             self.ctrl.move_up(delta)
+        except Exception as e:
+            log.warning(
+                f"move_up({delta}) falló: {e}. Continuando a altura por defecto (~80cm). "
+                f"Para forzar 80cm sin error pon FLIGHT_HEIGHT_CM=80 en config.py."
+            )
 
     def _fly_mission(self) -> bool:
         for i in range(1, self.num_tables + 1):
