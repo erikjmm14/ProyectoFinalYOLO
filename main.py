@@ -1,0 +1,97 @@
+"""Entry point CLI del proyecto."""
+
+import argparse
+import logging
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import config
+from mission import MissionPlanner
+from vision.detector import YOLODetector
+from drone.mock_controller import MockController
+from drone.tello_controller import TelloController
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="Dron Tello busca objetos con YOLO")
+    p.add_argument("--mode", choices=["sim", "real"], default="sim",
+                   help="sim: usa webcam/video; real: vuela el Tello")
+    p.add_argument("--target", required=True,
+                   help="Objeto a buscar (refresco, libro, taza, mochila, celular, mouse)")
+    p.add_argument("--video", default="0",
+                   help="Solo en sim: '0' webcam o ruta a video/imagen. Ignorado en real.")
+    p.add_argument("--tables", type=int, default=config.DEFAULT_NUM_TABLES,
+                   help="Numero de mesas (default 6)")
+    p.add_argument("--show", dest="show", action="store_true", default=True,
+                   help="Mostrar ventana OpenCV (default activado)")
+    p.add_argument("--no-show", dest="show", action="store_false",
+                   help="Desactivar ventana OpenCV")
+    return p
+
+
+def build_components(args: argparse.Namespace):
+    target_coco = config.resolve_alias(args.target)
+
+    if args.mode == "real":
+        controller = TelloController()
+    else:
+        video_src = int(args.video) if args.video.isdigit() else args.video
+        controller = MockController(video_source=video_src)
+
+    detector = YOLODetector(
+        model_path="yolov8n.pt",
+        target=target_coco,
+        conf_threshold=config.CONF_THRESHOLD,
+    )
+    return controller, detector
+
+
+def setup_logging() -> None:
+    Path("logs").mkdir(exist_ok=True)
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    log_path = Path("logs") / f"flight_{ts}.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=[
+            logging.FileHandler(log_path, encoding="utf-8"),
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
+    logging.info(f"Log: {log_path}")
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    setup_logging()
+    log = logging.getLogger("main")
+    log.info(f"Args: {args}")
+
+    try:
+        controller, detector = build_components(args)
+    except ValueError as e:
+        log.error(f"Error de configuracion: {e}")
+        return 2
+
+    mission = MissionPlanner(
+        controller=controller,
+        detector=detector,
+        num_tables=args.tables,
+        show=args.show,
+    )
+
+    try:
+        found = mission.run()
+    except KeyboardInterrupt:
+        log.warning("Abort manual")
+        return 130
+    except Exception as e:
+        log.exception(f"Falla en la mision: {e}")
+        return 1
+
+    return 0 if found else 3
+
+
+if __name__ == "__main__":
+    sys.exit(main())
