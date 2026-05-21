@@ -30,7 +30,7 @@ class TelloController:
         self._reassert_sdk_mode()
 
     def _post_command_settle(self) -> None:
-        time.sleep(1)
+        time.sleep(2)
 
     def _reassert_sdk_mode(self) -> None:
         """Reenvía el comando 'command' para asegurar que el Tello sigue en modo SDK.
@@ -54,12 +54,14 @@ class TelloController:
         log.info(f"[TELLO] move_forward {cm}cm")
         # djitellopy clamp: el Tello acepta 20–500 cm por comando
         cm = max(20, min(500, int(cm)))
+        self._reassert_sdk_mode()
         self.tello.move_forward(cm)
         self._post_command_settle()
 
     def move_up(self, cm: int) -> None:
         log.info(f"[TELLO] move_up {cm}cm")
         cm = max(20, min(500, int(cm)))
+        self._reassert_sdk_mode()
         self.tello.move_up(cm)
         self._post_command_settle()
 
