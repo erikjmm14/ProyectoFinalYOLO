@@ -79,6 +79,23 @@ class TelloController:
         self.tello.move_left(cm)
         self._post_command_settle()
 
+    def send_rc_control(self, lr: int, fb: int, ud: int, yaw: int) -> None:
+        """Control RC continuo. Cada parámetro en [-100, 100]. NO bloquea.
+
+        lr  = velocidad lateral (- izq, + der)
+        fb  = velocidad frontal (- atrás, + adelante)
+        ud  = velocidad vertical (- abajo, + arriba)
+        yaw = velocidad rotacional (- ccw, + cw)
+
+        Diseñado para llamadas a alta frecuencia (~20-50 Hz). Si dejas de
+        llamarlo, el Tello aterriza solo tras ~15s sin comandos.
+        """
+        lr  = max(-100, min(100, int(lr)))
+        fb  = max(-100, min(100, int(fb)))
+        ud  = max(-100, min(100, int(ud)))
+        yaw = max(-100, min(100, int(yaw)))
+        self.tello.send_rc_control(lr, fb, ud, yaw)
+
     def get_frame(self):
         return self.tello.get_frame_read().frame
 

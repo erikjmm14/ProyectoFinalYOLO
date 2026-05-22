@@ -47,3 +47,11 @@ def test_target_found_returns_none_when_absent():
 def test_invalid_target_raises():
     with pytest.raises(ValueError, match="no es una clase COCO"):
         YOLODetector(model_path="yolov8n.pt", target="termo", conf_threshold=0.5)
+
+
+def test_target_none_skips_validation_and_target_found():
+    det = YOLODetector(model_path="yolov8n.pt", target=None, conf_threshold=0.5)
+    # No lanza en construcción (target=None desactiva validación).
+    # target_found siempre devuelve None cuando target es None.
+    fake = [Detection("person", 0.99, (0, 0, 1, 1))]
+    assert det.target_found(fake) is None

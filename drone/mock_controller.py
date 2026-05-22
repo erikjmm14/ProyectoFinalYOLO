@@ -54,6 +54,10 @@ class MockController:
         log.info(f"[MOCK] move_left {cm}cm")
         time.sleep(cm / 50)
 
+    def send_rc_control(self, lr: int, fb: int, ud: int, yaw: int) -> None:
+        # En mock no se loggea cada call (sería ruidoso a 50Hz).
+        pass
+
     def get_frame(self):
         ok, frame = self.cap.read()
         return frame if ok else None

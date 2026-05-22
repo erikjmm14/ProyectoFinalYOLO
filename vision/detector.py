@@ -12,11 +12,15 @@ class Detection:
 
 
 class YOLODetector:
-    def __init__(self, model_path: str, target: str, conf_threshold: float):
+    def __init__(self, model_path: str, target: str | None, conf_threshold: float):
+        """target=None deshabilita la validación y target_found() siempre devuelve None.
+        En ese modo, detect() sigue devolviendo TODAS las clases COCO ≥ umbral.
+        """
         self.model = YOLO(model_path)
         self.target = target
         self.conf_threshold = conf_threshold
-        self._validate_target()
+        if target is not None:
+            self._validate_target()
 
     def _validate_target(self) -> None:
         valid = set(self.model.names.values())
@@ -39,5 +43,7 @@ class YOLODetector:
         return detections
 
     def target_found(self, detections: list[Detection]) -> Detection | None:
+        if self.target is None:
+            return None
         candidates = [d for d in detections if d.label == self.target]
         return max(candidates, key=lambda d: d.conf, default=None)

@@ -2,4 +2,5 @@ djitellopy~=2.5
 ultralytics~=8.3
 opencv-python~=4.10
 numpy~=1.26
+pynput~=1.7
 pytest~=8.3

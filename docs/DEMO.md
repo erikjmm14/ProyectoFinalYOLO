@@ -2,6 +2,13 @@
 
 Esta guía es para alguien que **nunca ha volado el Tello**. Síguela en orden.
 
+> ℹ️ **3 modos de operación disponibles**:
+> - **Default** (vuelo autónomo "cangrejo"): el dron recorre 6 objetos solo y se detiene en el target.
+> - **`--manual`** (cámara pasiva): el dron NO vuela; tú lo cargas con la mano. YOLO sigue activo.
+> - **`--keyboard`** (vuelo manual con teclado): controlas el dron con flechas + WASD, YOLO detecta TODAS las clases COCO. **Recomendado si los modos autónomos fallan**.
+>
+> Esta guía se centra en el modo default. Al final hay una sección rápida para los otros dos.
+
 ---
 
 ## Parte 1 — Un día antes
@@ -211,3 +218,64 @@ Para que el video se vea profesional:
    - Para invertir el sentido: `--direction left` (entonces colocas el dron en el extremo opuesto).
 6. **`Q`** = aterrizaje seguro. **Apagar Tello** = corte de motores (emergencia).
 7. Graba: compañero con celular + `Win + Alt + R` para pantalla.
+
+---
+
+## Modo teclado — control manual con flechas
+
+Si el vuelo autónomo te ha estado fallando, este modo te deja **controlar el dron como un videojuego** mientras YOLO detecta TODO lo que pasa frente a la cámara (no solo un objeto).
+
+### Lanzar
+
+```powershell
+cd "c:\Users\erikj\OneDrive\Documents\UAQ\DCC\Optativa I\ProyectoFinalYOLO"
+.venv\Scripts\activate
+python main.py --mode real --keyboard
+```
+
+- Sin `--target` → YOLO te muestra **TODAS las clases COCO** que detecte (las 80).
+- Con `--target libro` (opcional) → adicionalmente resalta cuando ve un libro.
+- Puedes ajustar velocidad: `--speed 50` (default 40, rango 10-100).
+
+### Controles (memorízalos antes de despegar)
+
+| Tecla | Acción |
+|---|---|
+| **T** | Takeoff (despegar) |
+| **L** | Land (aterrizar) |
+| **↑ / ↓** | Adelante / atrás |
+| **← / →** | Strafe izquierda / derecha |
+| **W / S** | Subir / bajar |
+| **A / D** | Rotar izquierda / derecha (yaw) |
+| **+ / −** | Aumentar / reducir velocidad |
+| **ESC** | Salir (aterriza primero si está en vuelo) |
+| **Espacio** | EMERGENCY — corte motores (caída controlada) |
+
+### Importante sobre el teclado
+
+- Las teclas se capturan **globalmente** (no necesitas que la ventana de OpenCV tenga foco).
+- **No las disparas en ráfaga** — mantén la tecla presionada para movimiento continuo, suéltala para parar.
+- Si presionas dos teclas a la vez (ej. ↑ + →), se combinan: avance diagonal.
+
+### Para tu demo con este modo
+
+1. Coloca todos los objetos en la mesa (no importa la disposición).
+2. Conecta al WiFi del Tello.
+3. Corre `python main.py --mode real --keyboard`.
+4. Aparece la ventana del video.
+5. Presiona **T** → despega.
+6. Usa las flechas para moverlo frente a cada objeto.
+7. La pantalla muestra cajas cian con `bottle 87%`, `book 92%`, etc.
+8. Presiona **L** o **ESC** → aterriza.
+
+---
+
+## Modo manual — dron como cámara cargada en mano
+
+Si ni siquiera con teclado puedes hacerlo volar, esta es la opción de respaldo absoluta:
+
+```powershell
+python main.py --mode real --target libro --manual
+```
+
+El dron NO despega. Tú lo cargas con tu mano y lo apuntas a los objetos. YOLO sigue funcionando. Ideal para una demo "controlada" donde solo quieres mostrar la detección, sin riesgo de vuelo.

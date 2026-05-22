@@ -17,8 +17,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Dron Tello busca objetos con YOLO")
     p.add_argument("--mode", choices=["sim", "real"], default="sim",
                    help="sim: usa webcam/video; real: vuela el Tello")
-    p.add_argument("--target", required=True,
-                   help="Objeto a buscar (refresco, libro, taza, mochila, celular, mouse)")
+    p.add_argument("--target", default=None,
+                   help="Objeto a buscar (refresco, libro, taza, mochila, celular, mouse). "
+                        "Requerido en modos default/manual. En --keyboard es opcional "
+                        "(omítelo para detectar TODAS las clases COCO).")
     p.add_argument("--video", default="0",
                    help="Solo en sim: '0' webcam o ruta a video/imagen. Ignorado en real.")
     p.add_argument("--tables", type=int, default=config.DEFAULT_NUM_TABLES,
@@ -33,11 +35,26 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Modo manual: solo conecta al dron y muestra YOLO, NO despega ni vuela. "
                         "Útil cuando el vuelo autónomo falla por IMU/motores. "
                         "El usuario carga el dron físicamente.")
+    p.add_argument("--keyboard", action="store_true", default=False,
+                   help="Modo teclado: control en vivo del dron con flechas + WASD, "
+                        "YOLO detecta TODAS las clases COCO en pantalla. "
+                        "Si no se pasa --target, se muestra detección sin objetivo específico.")
+    p.add_argument("--speed", type=int, default=40,
+                   help="Velocidad inicial en modo teclado (10-100, default 40).")
     return p
 
 
 def build_components(args: argparse.Namespace):
-    target_coco = config.resolve_alias(args.target)
+    # En modo teclado, target es opcional. En los demás, requerido.
+    if args.target is None:
+        if not args.keyboard:
+            raise ValueError(
+                "--target es requerido (excepto en --keyboard). "
+                "Usa --target refresco|libro|taza|mochila|celular|mouse"
+            )
+        target_coco = None
+    else:
+        target_coco = config.resolve_alias(args.target)
 
     if args.mode == "real":
         controller = TelloController()
@@ -89,6 +106,9 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
+        if args.keyboard:
+            mission.run_keyboard(speed=args.speed)
+            return 0
         if args.manual:
             found = mission.run_manual()
         else:

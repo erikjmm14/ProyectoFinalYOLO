@@ -256,6 +256,169 @@ class MissionPlanner:
 
         return target_seen
 
+    # ---------- Modo teclado: control en vivo + YOLO sobre todas las clases ----------
+
+    def run_keyboard(self, speed: int = 40) -> None:
+        """Modo teclado: vuelo manual con flechas + WASD, YOLO detecta TODO.
+
+        Controles:
+            Flechas: adelante / atrás / izquierda / derecha
+            W / S  : subir / bajar
+            A / D  : rotar izq / der
+            T      : takeoff
+            L      : land
+            +/-    : aumentar / reducir velocidad
+            Espacio: emergency (corte motores)
+            ESC    : salir (aterriza primero si está en vuelo)
+        """
+        from pynput import keyboard as kb  # lazy import: solo aquí
+
+        state = {
+            "lr": 0, "fb": 0, "ud": 0, "yaw": 0,
+            "speed": speed,
+            "request_takeoff": False,
+            "request_land": False,
+            "request_emergency": False,
+            "request_quit": False,
+        }
+
+        def _key_attrs(key):
+            name = getattr(key, "name", None)
+            char = None
+            ch = getattr(key, "char", None)
+            if isinstance(ch, str) and ch:
+                char = ch.lower()
+            return name, char
+
+        def on_press(key):
+            name, char = _key_attrs(key)
+            if   name == "up":    state["fb"] = state["speed"]
+            elif name == "down":  state["fb"] = -state["speed"]
+            elif name == "left":  state["lr"] = -state["speed"]
+            elif name == "right": state["lr"] = state["speed"]
+            elif char == "w":     state["ud"] = state["speed"]
+            elif char == "s":     state["ud"] = -state["speed"]
+            elif char == "a":     state["yaw"] = -state["speed"]
+            elif char == "d":     state["yaw"] = state["speed"]
+            elif char == "t":     state["request_takeoff"] = True
+            elif char == "l":     state["request_land"] = True
+            elif char in ("+", "="):
+                state["speed"] = min(100, state["speed"] + 10)
+            elif char in ("-", "_"):
+                state["speed"] = max(10, state["speed"] - 10)
+            elif name == "esc":   state["request_quit"] = True
+            elif name == "space": state["request_emergency"] = True
+
+        def on_release(key):
+            name, char = _key_attrs(key)
+            if   name in ("up", "down"):       state["fb"] = 0
+            elif name in ("left", "right"):    state["lr"] = 0
+            elif char in ("w", "s"):           state["ud"] = 0
+            elif char in ("a", "d"):           state["yaw"] = 0
+
+        listener = kb.Listener(on_press=on_press, on_release=on_release)
+        listener.start()
+
+        flying = False
+        try:
+            self.ctrl.connect()
+            bat = self.ctrl.get_battery()
+            log.info(f"Batería: {bat}%")
+            log.info("=== MODO TECLADO — controles:")
+            log.info("  Flechas: adelante/atrás/izq/der  |  W/S: subir/bajar  |  A/D: rotar")
+            log.info("  T: takeoff  |  L: land  |  +/-: velocidad  |  ESC: salir  |  Espacio: emergency")
+
+            loop_dt = 0.05  # 20 Hz, suficiente para RC y video
+            while not state["request_quit"]:
+                if state["request_emergency"]:
+                    log.warning("EMERGENCY presionado — cortando motores")
+                    self.ctrl.emergency()
+                    flying = False
+                    state["request_emergency"] = False
+                    break
+
+                if state["request_takeoff"] and not flying:
+                    log.info("Takeoff solicitado")
+                    self.ctrl.takeoff()
+                    flying = True
+                    state["request_takeoff"] = False
+
+                if state["request_land"] and flying:
+                    log.info("Land solicitado")
+                    self.ctrl.land()
+                    flying = False
+                    state["request_land"] = False
+
+                if flying:
+                    self.ctrl.send_rc_control(
+                        state["lr"], state["fb"], state["ud"], state["yaw"]
+                    )
+
+                frame = self.ctrl.get_frame()
+                if frame is not None:
+                    detections = self.det.detect(frame)
+                    if self.show:
+                        self._render_keyboard(frame, detections, state, flying)
+                        # waitKey además mantiene la ventana viva
+                        if cv2.waitKey(1) & 0xFF == 27:  # ESC en ventana
+                            state["request_quit"] = True
+
+                time.sleep(loop_dt)
+
+            if flying:
+                log.info("Quit solicitado — aterrizando")
+                try:
+                    self.ctrl.land()
+                except Exception as e:
+                    log.warning(f"land() falló: {e}; intentando emergency")
+                    try: self.ctrl.emergency()
+                    except Exception: pass
+        finally:
+            listener.stop()
+            self.ctrl.end()
+            if self.show:
+                cv2.destroyAllWindows()
+
+    def _render_keyboard(self, frame, detections, state, flying) -> None:
+        """HUD del modo teclado: bboxes de TODO + estado de control + lista."""
+        # Bounding boxes con color cian uniforme + label + %
+        for d in detections:
+            x1, y1, x2, y2 = (int(v) for v in d.bbox)
+            color = (255, 200, 0)  # cian BGR
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            label_text = f"{d.label} {d.conf * 100:.0f}%"
+            cv2.putText(frame, label_text, (x1, max(20, y1 - 8)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2)
+
+        h, w = frame.shape[:2]
+
+        # HUD superior: estado de vuelo + velocidad
+        cv2.rectangle(frame, (0, 0), (w, 38), (0, 0, 0), -1)
+        status = "EN VUELO" if flying else "EN PISO"
+        status_color = (0, 255, 0) if flying else (0, 200, 255)
+        cv2.putText(frame, f"{status}  |  vel={state['speed']}",
+                    (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
+
+        # Lista de objetos detectados (sumarizada, max conf por clase)
+        by_class: dict[str, float] = {}
+        for d in detections:
+            by_class[d.label] = max(by_class.get(d.label, 0.0), d.conf)
+        if by_class:
+            sorted_items = sorted(by_class.items(), key=lambda kv: -kv[1])
+            top_items = sorted_items[:6]
+            list_text = "  ".join(f"{lbl}:{c*100:.0f}%" for lbl, c in top_items)
+            cv2.rectangle(frame, (0, 38), (w, 65), (30, 30, 30), -1)
+            cv2.putText(frame, list_text, (10, 58),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        # HUD inferior: instrucciones rápidas
+        cv2.rectangle(frame, (0, h - 28), (w, h), (0, 0, 0), -1)
+        cv2.putText(frame,
+                    "Flechas mover | W/S subir-bajar | A/D rotar | T takeoff | L land | ESC salir",
+                    (10, h - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
+
+        cv2.imshow("Tello YOLO - Teclado", frame)
+
     def _render_manual(self, frame, detections, target_hit) -> None:
         """Render con HUD para modo manual: target arriba, porcentajes en cada caja."""
         # Bounding boxes con porcentaje
