@@ -9,6 +9,12 @@ def test_parser_defaults():
     assert args.video == "0"
     assert args.tables == 6
     assert args.show is True
+    assert args.manual is False
+
+
+def test_parser_manual_flag():
+    args = build_parser().parse_args(["--target", "libro", "--manual"])
+    assert args.manual is True
 
 
 def test_parser_real_mode():

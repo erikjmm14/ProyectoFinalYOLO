@@ -197,3 +197,92 @@ class MissionPlanner:
             cv2.putText(frame, f"{d.label} {d.conf:.2f}", (x1, max(15, y1 - 6)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
         cv2.imshow("Tello YOLO", frame)
+
+    # ---------- Modo manual: solo stream + YOLO, sin vuelo ----------
+
+    def run_manual(self) -> bool:
+        """Modo manual: conecta al dron, muestra su cámara con YOLO, NO vuela.
+
+        El usuario carga el dron físicamente y lo apunta a los objetos.
+        Útil cuando el vuelo autónomo falla por IMU/motores y solo se quiere
+        demostrar la detección.
+        """
+        log.info("=== MODO MANUAL — el dron NO va a despegar ===")
+        log.info("Carga el dron con tu mano y apunta su cámara a los objetos.")
+        log.info("Presiona 'q' en la ventana de OpenCV para salir.")
+        target_found = False
+        try:
+            self.ctrl.connect()
+            bat = self.ctrl.get_battery()
+            log.info(f"Batería: {bat}%")
+            target_found = self._manual_loop()
+        finally:
+            self.ctrl.end()
+            if self.show:
+                cv2.destroyAllWindows()
+        return target_found
+
+    def _manual_loop(self) -> bool:
+        """Lee frames, corre YOLO, muestra HUD. Devuelve True si vio el target."""
+        target_seen = False
+        last_log_time = 0.0
+        while True:
+            frame = self.ctrl.get_frame()
+            if frame is None:
+                time.sleep(0.05)
+                continue
+
+            detections = self.det.detect(frame)
+            hit = self.det.target_found(detections)
+
+            if hit is not None:
+                if not target_seen:
+                    log.info(f"🎯 Primera detección de '{hit.label}' "
+                             f"con conf={hit.conf:.2f}")
+                    target_seen = True
+                else:
+                    now = time.time()
+                    if now - last_log_time > 2.0:
+                        log.info(f"  target visible: {hit.label} ({hit.conf:.2f})")
+                        last_log_time = now
+
+            if self.show:
+                self._render_manual(frame, detections, hit)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            else:
+                # En modo headless el loop manual no tiene sentido; salimos rápido.
+                break
+
+        return target_seen
+
+    def _render_manual(self, frame, detections, target_hit) -> None:
+        """Render con HUD para modo manual: target arriba, porcentajes en cada caja."""
+        # Bounding boxes con porcentaje
+        for d in detections:
+            x1, y1, x2, y2 = (int(v) for v in d.bbox)
+            is_target = d.label == self.det.target
+            color = (0, 255, 0) if is_target else (255, 255, 0)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            label_text = f"{d.label} {d.conf * 100:.0f}%"
+            cv2.putText(frame, label_text, (x1, max(20, y1 - 8)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+        # HUD superior: estado del target
+        h, w = frame.shape[:2]
+        cv2.rectangle(frame, (0, 0), (w, 45), (0, 0, 0), -1)
+        if target_hit is not None:
+            hud = f"ENCONTRADO: {target_hit.label}  {target_hit.conf * 100:.0f}%"
+            hud_color = (0, 255, 0)
+        else:
+            hud = f"BUSCANDO: {self.det.target}"
+            hud_color = (0, 255, 255)
+        cv2.putText(frame, hud, (10, 32),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, hud_color, 2)
+
+        # HUD inferior: instrucciones
+        cv2.rectangle(frame, (0, h - 28), (w, h), (0, 0, 0), -1)
+        cv2.putText(frame, "MODO MANUAL — presiona 'Q' para salir",
+                    (10, h - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
+
+        cv2.imshow("Tello YOLO - Manual", frame)

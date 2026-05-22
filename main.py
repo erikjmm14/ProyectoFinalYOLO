@@ -29,6 +29,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Mostrar ventana OpenCV (default activado)")
     p.add_argument("--no-show", dest="show", action="store_false",
                    help="Desactivar ventana OpenCV")
+    p.add_argument("--manual", action="store_true", default=False,
+                   help="Modo manual: solo conecta al dron y muestra YOLO, NO despega ni vuela. "
+                        "Útil cuando el vuelo autónomo falla por IMU/motores. "
+                        "El usuario carga el dron físicamente.")
     return p
 
 
@@ -85,7 +89,10 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
-        found = mission.run()
+        if args.manual:
+            found = mission.run_manual()
+        else:
+            found = mission.run()
     except KeyboardInterrupt:
         log.warning("Abort manual")
         return 130
