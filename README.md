@@ -95,3 +95,4 @@ Ver [docs/CALIBRACION.md](docs/CALIBRACION.md).
 ```
 ## Contribuidores
 Carlos Eugenio Miranda Rocha
+Guillermo Carlos Guerrero Camargo
