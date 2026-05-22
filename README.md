@@ -93,3 +93,5 @@ Ver [docs/CALIBRACION.md](docs/CALIBRACION.md).
 ├── tests/
 └── docs/
 ```
+## Contribuidores
+Carlos Eugenio Miranda Rocha
