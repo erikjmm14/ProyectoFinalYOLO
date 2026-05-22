@@ -9,7 +9,7 @@ from vision.detector import Detection
 
 
 class FakeController:
-    """Devuelve un frame distinto por cada move_forward."""
+    """Devuelve un frame distinto por cada movimiento lateral/forward."""
     def __init__(self, total_frames_per_table: int = 5):
         self.table_idx = 0
         self.frames_remaining = 0
@@ -24,10 +24,15 @@ class FakeController:
     def emergency(self): self.calls.append("emergency"); self.in_air = False
     def end(self): self.calls.append("end")
     def get_battery(self): return self.battery
-    def move_forward(self, cm):
-        self.calls.append(f"forward:{cm}")
+
+    def _advance(self, prefix: str, cm: int):
+        self.calls.append(f"{prefix}:{cm}")
         self.table_idx += 1
         self.frames_remaining = self.total_per_table
+
+    def move_forward(self, cm): self._advance("forward", cm)
+    def move_right(self, cm):   self._advance("right", cm)
+    def move_left(self, cm):    self._advance("left", cm)
 
     def move_up(self, cm):
         self.calls.append(f"up:{cm}")
@@ -67,9 +72,9 @@ def test_mission_finds_target_at_table_3():
         scan_time_sec=0, show=False,
     )
     mission.run()
-    # Avanzó 3 veces y aterrizó (sin completar las 6)
-    forward_calls = [c for c in ctrl.calls if c.startswith("forward:")]
-    assert len(forward_calls) == 3
+    # Avanzó 3 veces (lateral default = right) y aterrizó
+    move_calls = [c for c in ctrl.calls if c.startswith("right:")]
+    assert len(move_calls) == 3
     assert "land" in ctrl.calls
 
 
@@ -82,9 +87,29 @@ def test_mission_completes_all_tables_when_target_absent():
         scan_time_sec=0, show=False,
     )
     mission.run()
-    forward_calls = [c for c in ctrl.calls if c.startswith("forward:")]
-    assert len(forward_calls) == 6
+    move_calls = [c for c in ctrl.calls if c.startswith("right:")]
+    assert len(move_calls) == 6
     assert "land" in ctrl.calls
+
+
+def test_mission_uses_forward_direction_when_requested():
+    ctrl = FakeController(total_frames_per_table=5)
+    det = FakeDetector(target_table=99)
+    mission = MissionPlanner(
+        controller=ctrl, detector=det, num_tables=2,
+        scan_max_frames=5, confirm_k_frames=3, hold_time_sec=0,
+        scan_time_sec=0, show=False, direction="forward",
+    )
+    mission.run()
+    assert sum(1 for c in ctrl.calls if c.startswith("forward:")) == 2
+
+
+def test_mission_rejects_invalid_direction():
+    ctrl = FakeController()
+    det = FakeDetector(target_table=99)
+    with pytest.raises(ValueError, match="direction"):
+        MissionPlanner(controller=ctrl, detector=det, num_tables=1,
+                       direction="up", show=False)
 
 
 def test_mission_aborts_on_low_battery_preflight():

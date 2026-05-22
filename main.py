@@ -22,7 +22,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--video", default="0",
                    help="Solo en sim: '0' webcam o ruta a video/imagen. Ignorado en real.")
     p.add_argument("--tables", type=int, default=config.DEFAULT_NUM_TABLES,
-                   help="Numero de mesas (default 6)")
+                   help="Numero de objetos a recorrer (default 6)")
+    p.add_argument("--direction", choices=["right", "left", "forward"], default="right",
+                   help="Direccion del recorrido entre objetos (default 'right', estilo cangrejo)")
     p.add_argument("--show", dest="show", action="store_true", default=True,
                    help="Mostrar ventana OpenCV (default activado)")
     p.add_argument("--no-show", dest="show", action="store_false",
@@ -78,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         controller=controller,
         detector=detector,
         num_tables=args.tables,
+        direction=args.direction,
         show=args.show,
     )
 

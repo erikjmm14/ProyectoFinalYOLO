@@ -65,6 +65,20 @@ class TelloController:
         self.tello.move_up(cm)
         self._post_command_settle()
 
+    def move_right(self, cm: int) -> None:
+        log.info(f"[TELLO] move_right {cm}cm")
+        cm = max(20, min(500, int(cm)))
+        self._reassert_sdk_mode()
+        self.tello.move_right(cm)
+        self._post_command_settle()
+
+    def move_left(self, cm: int) -> None:
+        log.info(f"[TELLO] move_left {cm}cm")
+        cm = max(20, min(500, int(cm)))
+        self._reassert_sdk_mode()
+        self.tello.move_left(cm)
+        self._post_command_settle()
+
     def get_frame(self):
         return self.tello.get_frame_read().frame
 

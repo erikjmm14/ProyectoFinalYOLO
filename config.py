@@ -1,8 +1,8 @@
 """Constantes y aliases del proyecto."""
 
 # ----- Vuelo -----
-FLIGHT_HEIGHT_CM = 120        # Altura sobre el piso.
-TABLE_DISTANCE_CM = 80        # Distancia centro a centro entre mesas.
+FLIGHT_HEIGHT_CM = 80         # Altura tras takeoff (80 = default del Tello, sin move_up).
+TABLE_DISTANCE_CM = 60        # Distancia lateral entre objetos consecutivos (estilo cangrejo).
 SCAN_TIME_SEC = 2.5           # Hover por mesa para escanear.
 SCAN_MAX_FRAMES = 15          # Cap de frames procesados por mesa.
 HOLD_TIME_SEC = 4             # Tiempo de "detención" sobre el objetivo.

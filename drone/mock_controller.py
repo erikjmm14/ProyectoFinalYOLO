@@ -46,6 +46,14 @@ class MockController:
         log.info(f"[MOCK] move_up {cm}cm")
         time.sleep(cm / 50)
 
+    def move_right(self, cm: int) -> None:
+        log.info(f"[MOCK] move_right {cm}cm")
+        time.sleep(cm / 50)
+
+    def move_left(self, cm: int) -> None:
+        log.info(f"[MOCK] move_left {cm}cm")
+        time.sleep(cm / 50)
+
     def get_frame(self):
         ok, frame = self.cap.read()
         return frame if ok else None

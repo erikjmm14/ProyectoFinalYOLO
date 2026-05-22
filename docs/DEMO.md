@@ -20,25 +20,35 @@ Esta guía es para alguien que **nunca ha volado el Tello**. Síguela en orden.
 
 ---
 
-## Parte 2 — Preparar el espacio
+## Parte 2 — Preparar el espacio (estilo "cangrejo")
 
-- [ ] **Necesitas ~6 metros de largo × 3 metros de ancho** despejados.
+**Importante**: el Ryze Tello solo tiene cámara frontal (no cenital). Por eso el dron NO pasa por encima de los objetos, sino que **se desplaza lateralmente como un cangrejo** mientras la cámara mira de frente a cada objeto.
+
+- [ ] **Necesitas ~5 metros de ancho × 2.5 metros de profundidad** despejados.
 - [ ] **Apaga aire acondicionado y ventiladores** cercanos. Las corrientes de aire vuelan al Tello.
-- [ ] **Coloca las 6 mesas en fila recta**, separadas **80 cm centro a centro**. Mide con cinta.
-- [ ] **Pon 1 objeto al centro de cada mesa**. El orden es libre — el dron las recorre todas hasta encontrar el que buscas.
-- [ ] **Marca con cinta el punto de despegue del dron**: debe estar **80 cm antes de la mesa 1** y centrado.
-- [ ] **Asegúrate de que arriba del recorrido no haya lámparas, ventiladores de techo, ni cables**. El dron sube a **120 cm**.
+- [ ] **Pon 1 mesa larga (o varias mesas pegadas en fila)** y coloca los 6 objetos en línea, separados **60 cm uno de otro**. El orden es libre.
+- [ ] Los objetos quedan al borde de la mesa, mirando hacia ti.
+- [ ] **Marca con cinta el punto de despegue del dron**: en el piso, a **~80-100 cm en frente del primer objeto** (el de la izquierda, si el dron se va a desplazar a la derecha).
+- [ ] **Pon periódicos abiertos en el piso** debajo del recorrido del dron, a lo largo de los 5 metros. Da textura para la cámara inferior (sensor de posición).
+- [ ] **Asegúrate de que no haya nada arriba** (lámparas, ventiladores de techo). El dron vuela a ~80 cm.
 
 ```
-    [Mesa 1]   [Mesa 2]   [Mesa 3]   [Mesa 4]   [Mesa 5]   [Mesa 6]
-       |          |          |          |          |          |
-       *----------*----------*----------*----------*----------*
-       80cm       80cm       80cm       80cm       80cm
-   
-   [DRON]
-     ^
-   80cm antes de Mesa 1
+Vista de planta (desde arriba):
+
+      [Mesa larga con 6 objetos en fila, separados 60cm cada uno]
+       □ ────── □ ────── □ ────── □ ────── □ ────── □
+       60cm     60cm     60cm     60cm     60cm
+       ↑
+       Frente de la mesa (los objetos miran al dron)
+
+       ~ 80-100 cm de separación
+
+       [DRON]──→──→──→──→──→──→──→──→──→  (se desplaza a la DERECHA)
+        ^
+        Despega aquí, alineado con el primer objeto
 ```
+
+El dron mira siempre hacia la mesa (rotación fija después del takeoff), y se desliza a la derecha pasando frente a cada objeto. La cámara frontal captura cada objeto uno por uno.
 
 ---
 
@@ -76,14 +86,13 @@ python main.py --mode real --target libro
    - `Preflight checks...`
    - `[TELLO] connect`
    - `Batería: XX%` (debe ser ≥ 30%)
-   - `[TELLO] takeoff` → **el dron despega y sube ~80 cm**
-   - `[TELLO] move_up 40cm` → **sube a 120 cm total**
-   - `--- Mesa 1/6 ---`
-   - `[TELLO] move_forward 80cm` → **avanza a la primera mesa**
-   - Hover ~2.5 s mientras escanea
-   - Si no detecta → `--- Mesa 2/6 ---` y avanza
-   - Cuando detecta → `🎯 Objetivo 'book' encontrado en mesa N`
-   - Hover 4 s sobre el objeto
+   - `[TELLO] takeoff` → **el dron despega y sube ~80 cm** (queda a altura de los objetos en la mesa)
+   - `--- Objeto 1/6 (moviendo right) ---`
+   - `[TELLO] move_right 60cm` → **se desliza lateralmente al primer objeto**
+   - Hover ~2.5 s mientras escanea con la cámara frontal
+   - Si no detecta → `--- Objeto 2/6 ---` y sigue desplazándose
+   - Cuando detecta → `🎯 Objetivo 'book' encontrado en objeto N`
+   - Hover 4 s frente al objeto
    - `[TELLO] land` → **aterriza solo**
 
 ---
@@ -188,14 +197,17 @@ Para que el video se vea profesional:
 
 ## Resumen ultra-corto (la "chuleta")
 
-1. Mesas en fila, 80 cm de separación.
-2. Dron 80 cm antes de mesa 1, centrado.
-3. Enciende Tello → laptop a WiFi `TELLO-XXXXX`.
-4. PowerShell:
+1. **6 objetos en fila sobre una mesa larga**, separados 60 cm cada uno.
+2. **Dron en el piso**, ~80 cm frente al primer objeto (el del extremo izquierdo).
+3. **Periódicos en el piso** debajo del recorrido (textura para sensor inferior).
+4. Enciende Tello → laptop a WiFi `TELLO-XXXXX`.
+5. PowerShell:
    ```powershell
    cd "c:\Users\erikj\OneDrive\Documents\UAQ\DCC\Optativa I\ProyectoFinalYOLO"
    .venv\Scripts\activate
    python main.py --mode real --target libro
    ```
-5. **`Q`** = aterrizaje seguro. **Apagar Tello** = corte de motores (emergencia).
-6. Graba: compañero con celular + `Win + Alt + R` para pantalla.
+   - El dron despega, queda a ~80 cm (altura de objetos en la mesa) y se desliza a la **derecha** pasando frente a cada objeto con su cámara frontal.
+   - Para invertir el sentido: `--direction left` (entonces colocas el dron en el extremo opuesto).
+6. **`Q`** = aterrizaje seguro. **Apagar Tello** = corte de motores (emergencia).
+7. Graba: compañero con celular + `Win + Alt + R` para pantalla.

@@ -21,6 +21,7 @@ class MissionPlanner:
                  battery_preflight_min: int = config.BATTERY_PREFLIGHT_MIN,
                  battery_abort_min: int = config.BATTERY_ABORT_MIN,
                  flight_height_cm: int = config.FLIGHT_HEIGHT_CM,
+                 direction: str = "right",
                  show: bool = True):
         self.ctrl = controller
         self.det = detector
@@ -33,6 +34,9 @@ class MissionPlanner:
         self.battery_preflight_min = battery_preflight_min
         self.battery_abort_min = battery_abort_min
         self.flight_height_cm = flight_height_cm
+        if direction not in ("right", "left", "forward"):
+            raise ValueError(f"direction inválida: {direction!r}. Usa right|left|forward.")
+        self.direction = direction
         self.show = show
 
         # Estado compartido con el thread de preview en vivo
@@ -93,9 +97,10 @@ class MissionPlanner:
             )
 
     def _fly_mission(self) -> bool:
+        move_fn = getattr(self.ctrl, f"move_{self.direction}")
         for i in range(1, self.num_tables + 1):
-            log.info(f"--- Mesa {i}/{self.num_tables} ---")
-            self.ctrl.move_forward(self.table_distance_cm)
+            log.info(f"--- Objeto {i}/{self.num_tables} (moviendo {self.direction}) ---")
+            move_fn(self.table_distance_cm)
 
             if self._scan_for_target(table_idx=i):
                 log.info(f"Objetivo '{self.det.target}' encontrado en mesa {i}")
